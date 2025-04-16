@@ -422,6 +422,51 @@ const GameManager = () => {
     }, 0);
   };
 
+  // Modified restart game function that preserves player list
+  const restartGame = () => {
+    // Reset players' stats but keep their names and chip stacks
+    const resetPlayers = players.map(player => ({
+      name: player.name,
+      stack: 1000, // Reset stack to default
+      bet: 0,
+      folded: false,
+      hasTakenAction: false
+    }));
+    
+    // Keep players but reset game state
+    setPlayers(resetPlayers);
+    setGameStage(GAME_STAGES.SETUP);
+    setActivePlayerIndex(0);
+    setPot(0);
+    setCurrentBet(0);
+    setDealerIndex(0);
+    setPlayersActedThisRound({});
+    setIsRoundComplete(false);
+    setBetAmount('');
+  };
+
+  // Go to menu function that preserves player list and their current stacks
+  const goToMenu = () => {
+    // Reset players' bets and folded status but keep their names and current chip stacks
+    const resetPlayers = players.map(player => ({
+      name: player.name,
+      stack: player.stack,  // Keep current stack
+      bet: 0,
+      folded: false,
+      hasTakenAction: false
+    }));
+    
+    // Keep players but reset game state
+    setPlayers(resetPlayers);
+    setGameStage(GAME_STAGES.SETUP);
+    setActivePlayerIndex(0);
+    setPot(0);
+    setCurrentBet(0);
+    setPlayersActedThisRound({});
+    setIsRoundComplete(false);
+    setBetAmount('');
+  };
+
   // Render different views based on game stage
   let gameView;
   
@@ -507,9 +552,17 @@ const GameManager = () => {
           </ul>
         </div>
         
-        <button onClick={startNewHand} className="new-hand-btn">
-          Start New Hand
-        </button>
+        <div className="game-controls">
+          <button onClick={startNewHand} className="new-hand-btn">
+            Start New Hand
+          </button>
+          <button onClick={goToMenu} className="menu-btn">
+            Go to Menu
+          </button>
+          <button onClick={restartGame} className="restart-game-btn">
+            Restart Game
+          </button>
+        </div>
       </div>
     );
   } else {
@@ -597,6 +650,15 @@ const GameManager = () => {
             </div>
           </div>
         )}
+        
+        <div className="game-controls">
+          <button onClick={goToMenu} className="menu-btn">
+            Go to Menu
+          </button>
+          <button onClick={restartGame} className="restart-game-btn">
+            Restart Game
+          </button>
+        </div>
       </div>
     );
   }
