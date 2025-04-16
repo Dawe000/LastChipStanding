@@ -11,6 +11,18 @@ const App = () => {
       </header>
       
       <GameManager />
+      
+      <footer className="app-footer">
+        <p>&copy; {new Date().getFullYear()} LastChipStanding</p>
+        <a 
+          href="https://github.com/Dawe000/LastChipStanding" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="github-link"
+        >
+          View on GitHub
+        </a>
+      </footer>
     </div>
   );
 };
