@@ -44,6 +44,32 @@ const GameManager = () => {
     setNewPlayerName('');
   };
 
+  // Function to remove a player
+  const removePlayer = (indexToRemove) => {
+    const updatedPlayers = players.filter((_, index) => index !== indexToRemove);
+    setPlayers(updatedPlayers);
+    
+    // If we're removing the current dealer, adjust the dealer position
+    if (indexToRemove === dealerIndex) {
+      setDealerIndex(dealerIndex > 0 ? dealerIndex - 1 : 0);
+    } else if (indexToRemove < dealerIndex) {
+      // If we're removing a player before the dealer, adjust the dealer index
+      setDealerIndex(dealerIndex - 1);
+    }
+  };
+
+  // Function to handle editing a player's money
+  const editPlayerMoney = (playerIndex, newAmount) => {
+    if (isNaN(newAmount) || newAmount < 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+    
+    const updatedPlayers = [...players];
+    updatedPlayers[playerIndex].stack = newAmount;
+    setPlayers(updatedPlayers);
+  };
+
   // Start the game
   const startGame = () => {
     if (players.length < 2) {
@@ -488,9 +514,40 @@ const GameManager = () => {
           <h3>Players:</h3>
           <ul>
             {players.map((player, index) => (
-              <li key={index}>
-                {player.name} - ${player.stack}
-                {index === dealerIndex && " (Dealer)"}
+              <li key={index} className="player-item">
+                <div className="player-info">
+                  <span>{player.name} - ${player.stack}</span>
+                  {index === dealerIndex && <span className="dealer-tag"> (Dealer)</span>}
+                </div>
+                <div className="player-actions">
+                  <div className="edit-money">
+                    <input 
+                      type="number" 
+                      placeholder="New amount"
+                      min="0"
+                      onChange={(e) => {
+                        const element = e.target;
+                        element.dataset.amount = e.target.value;
+                      }}
+                    />
+                    <button 
+                      onClick={(e) => {
+                        const input = e.target.previousSibling;
+                        const newAmount = parseInt(input.dataset.amount);
+                        editPlayerMoney(index, newAmount);
+                        input.value = '';
+                      }}
+                    >
+                      Update
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => removePlayer(index)} 
+                    className="remove-player-btn"
+                  >
+                    Remove
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
