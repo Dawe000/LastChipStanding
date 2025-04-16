@@ -1,36 +1,17 @@
-# Poker Chip Counter
+# Poker Game Manager
 
-This is a simple web application for counting poker chips and tracking bets. It allows users to manage their poker chips, place bets, and keep track of player statistics and game history.
+This is a web application I made for managing poker games with friends. It handles betting rounds, tracks chips, and guides the game flow while you play with physical cards.
 
 ## Features
 
-- **Chip Counter**: Manage the count of poker chips with options to increment and decrement the count.
-- **Bet Tracker**: Track total bets placed, with the ability to place and cancel bets.
-- **Player Statistics**: Maintain statistics for each player, including adding players and updating their stats.
-- **Game History**: Record the history of games played, with options to view and clear the history.
-
-## Project Structure
-
-```
-poker-chip-counter
-├── src
-│   ├── components
-│   │   ├── ChipCounter.js
-│   │   ├── BetTracker.js
-│   │   ├── PlayerStats.js
-│   │   └── GameHistory.js
-│   ├── styles
-│   │   └── main.css
-│   ├── utils
-│   │   └── calculations.js
-│   ├── app.js
-│   └── index.js
-├── public
-│   ├── index.html
-│   └── favicon.ico
-├── package.json
-└── README.md
-```
+- **Complete Game Flow Management**: Guides players through pre-flop, flop, turn, river and showdown stages
+- **Automated Betting Rounds**: Tracks current bets, pot size, and active players
+- **Player Management**: Add/remove players and customize starting chip counts
+- **Dealer Position Tracking**: Automatically rotates dealer position and posts blinds
+- **Real-time Stack Updates**: Monitor each player's chip stack throughout the game
+- **Fold Management**: Properly handles players folding during any round
+- **Customizable Blinds**: Set small and big blind values to match your game
+- **Intuitive Interface**: Clear visual indicators for the active player, dealer, and game stage
 
 ## Installation
 
