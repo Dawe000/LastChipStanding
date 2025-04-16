@@ -499,7 +499,7 @@ const GameManager = () => {
   if (gameStage === GAME_STAGES.SETUP) {
     gameView = (
       <div className="setup-screen">
-        <h2>Add Players</h2>
+        <h2>LastChipStanding: Player Setup</h2>
         <div className="add-player-form">
           <input
             type="text"
@@ -595,7 +595,7 @@ const GameManager = () => {
   } else if (gameStage === GAME_STAGES.SHOWDOWN) {
     gameView = (
       <div className="showdown-screen">
-        <h2>Showdown</h2>
+        <h2>LastChipStanding: Showdown</h2>
         
         <div className="pot">
           <h3>Pot: ${pot}</h3>
@@ -638,7 +638,7 @@ const GameManager = () => {
     gameView = (
       <div className="game-screen">
         <div className="game-info">
-          <h2>Current Stage: {gameStage.toUpperCase()}</h2>
+          <h2>LastChipStanding: {gameStage.toUpperCase()}</h2>
           <div className="pot">
             <h3>Pot: ${pot}</h3>
           </div>

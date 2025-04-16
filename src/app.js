@@ -6,8 +6,10 @@ const App = () => {
   return (
     <div className="poker-app">
       <header>
-        <h1>Poker Game Manager</h1>
+        <h1>LastChipStanding</h1>
+        <p className="tagline">Where friendships fold faster than bad hands</p>
       </header>
+      
       <GameManager />
     </div>
   );
