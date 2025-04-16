@@ -1,0 +1,292 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+.poker-app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #eee;
+}
+
+h1, h2, h3, h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+button {
+  background-color: #3498db;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+input, select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.player-management {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #ecf0f1;
+  border-radius: 4px;
+}
+
+.player-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.chip-counter, .bet-tracker {
+  flex: 1;
+  min-width: 300px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.chip-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.chip {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  margin-right: 10px;
+  display: inline-block;
+}
+
+.chip.white {
+  background-color: white;
+  border: 2px solid #333;
+}
+
+.chip.red {
+  background-color: red;
+}
+
+.chip.blue {
+  background-color: blue;
+}
+
+.chip.green {
+  background-color: green;
+}
+
+.chip.black {
+  background-color: black;
+}
+
+.chip-count {
+  margin: 0 10px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+
+.quick-bets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0;
+}
+
+.bet-history {
+  margin-top: 15px;
+}
+
+.bet-history ul {
+  list-style-type: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bet-history li {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.game-history {
+  margin-top: 30px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.history-table th, .history-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.history-table th {
+  background-color: #f2f2f2;
+}
+
+.positive {
+  color: green;
+}
+
+.negative {
+  color: red;
+}
+
+.total-value {
+  font-weight: bold;
+  margin-top: 15px;
+  font-size: 18px;
+}
+
+.game-manager {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.setup-screen, .game-screen, .showdown-screen {
+  margin-bottom: 20px;
+}
+
+.add-player-form {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.player-list {
+  margin: 20px 0;
+}
+
+.player-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.player-list li {
+  padding: 10px;
+  margin: 5px 0;
+  background-color: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.game-settings {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.game-settings div {
+  margin-bottom: 10px;
+}
+
+.start-game-btn, .new-hand-btn {
+  background-color: #28a745;
+  color: #fff;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.start-game-btn:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.active-player {
+  border-left: 5px solid #007bff !important;
+  font-weight: bold;
+}
+
+.folded-player {
+  color: #6c757d;
+  text-decoration: line-through;
+}
+
+.player-actions {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-buttons button {
+  min-width: 100px;
+}
+
+.raise-action {
+  display: flex;
+  gap: 5px;
+}
+
+.pot, .current-bet {
+  background-color: #dee2e6;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.community-cards-prompt {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #ffc107;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+}
