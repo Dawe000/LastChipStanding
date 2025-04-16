@@ -515,13 +515,24 @@ const GameManager = () => {
           </div>
         </div>
         
-        <button 
-          onClick={startGame} 
-          disabled={players.length < 2}
-          className="start-game-btn"
-        >
-          Start Game
-        </button>
+        <div className="game-controls">
+          <button 
+            onClick={startGame} 
+            disabled={players.length < 2}
+            className="start-game-btn"
+          >
+            Start Game
+          </button>
+          
+          {/* Always show a restart button on the menu */}
+          <button 
+            onClick={restartGame} 
+            className="restart-game-btn"
+            disabled={players.length === 0}
+          >
+            Reset All Stacks
+          </button>
+        </div>
       </div>
     );
   } else if (gameStage === GAME_STAGES.SHOWDOWN) {
@@ -654,9 +665,6 @@ const GameManager = () => {
         <div className="game-controls">
           <button onClick={goToMenu} className="menu-btn">
             Go to Menu
-          </button>
-          <button onClick={restartGame} className="restart-game-btn">
-            Restart Game
           </button>
         </div>
       </div>
