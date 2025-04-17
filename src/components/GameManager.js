@@ -171,40 +171,53 @@ const GameManager = () => {
         const raiseDiff = raiseTotal - currentPlayer.bet;
         currentPlayer.stack -= raiseDiff;
         currentPlayer.bet = raiseTotal;
-
-        // Important: Update these BEFORE calling moveToNextPlayer
+        
+        // Update these values first
+        const updatedPot = pot + raiseDiff;
+        const updatedCurrentBet = raiseTotal;
         const newPlayersActed = {};
         newPlayersActed[activePlayerIndex] = true;
 
-        // Update pot and current bet
-        setPot(pot + raiseDiff);
-        setCurrentBet(raiseTotal);
-
+        // Output for debugging
         console.log("Raise detected - resetting player actions to:", newPlayersActed);
         console.log("Current bet updated to:", raiseTotal);
 
+        // CRITICAL FIX: Determine next player before updating React state
+        let nextPlayerIndex;
+        
         // SPECIAL HANDLING FOR 2-PLAYER GAMES
         const activePlayersAfterRaise = updatedPlayers.filter(p => !p.folded);
         if (activePlayersAfterRaise.length === 2) {
-          // In 2-player games, directly set the next player index
-          const otherPlayerIndex = updatedPlayers.findIndex(
+          // In 2-player games, it's always the other active player
+          nextPlayerIndex = updatedPlayers.findIndex(
             (p, idx) => !p.folded && idx !== activePlayerIndex
           );
+          console.log(`2-player game raise detected, next turn: ${updatedPlayers[nextPlayerIndex].name}`);
+        } else {
+          // For 3+ player games, find the next player who needs to act
+          // Start from the next player
+          nextPlayerIndex = (activePlayerIndex + 1) % updatedPlayers.length;
+          let loopCount = 0;
           
-          console.log(`2-player game raise detected, forcing turn to player: ${updatedPlayers[otherPlayerIndex].name}`);
+          // Keep looping until we find a player who hasn't folded
+          while (updatedPlayers[nextPlayerIndex].folded && loopCount < updatedPlayers.length) {
+            nextPlayerIndex = (nextPlayerIndex + 1) % updatedPlayers.length;
+            loopCount++;
+          }
           
-          // Update all relevant state in one go
-          setPlayers(updatedPlayers);
-          setPlayersActedThisRound(newPlayersActed);
-          setActivePlayerIndex(otherPlayerIndex);
-          return;
+          console.log(`3+ player game raise, next turn: ${updatedPlayers[nextPlayerIndex].name}`);
         }
         
-        // For 3+ player games, use the normal flow
+        // Now update all state in the correct sequence
+        setPot(updatedPot);
+        setCurrentBet(updatedCurrentBet);
         setPlayersActedThisRound(newPlayersActed);
         setPlayers(updatedPlayers);
-        moveToNextPlayer(updatedPlayers);
-        return; // Skip the default flow at the end
+        
+        // CRITICAL: Set active player last to ensure it updates properly
+        setActivePlayerIndex(nextPlayerIndex);
+        
+        return; // Skip the default flow
 
       case 'check':
         if (currentPlayer.bet === currentBet) {
