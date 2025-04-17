@@ -220,11 +220,52 @@ input, select {
 }
 
 .player-list li {
-  padding: 10px;
   margin: 5px 0;
-  background-color: #fff;
+  padding: 10px;
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: background-color 0.3s ease;
+}
+
+.player-list li span.position-indicator {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 2px 6px;
+  font-size: 0.8em;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+}
+
+.dealer-tag {
+  background-color: #007bff;
+}
+
+.sb-tag {
+  background-color: #ffc107;
+}
+
+.bb-tag {
+  background-color: #dc3545;
+}
+
+.setup-screen .dealer-tag {
+  background-color: transparent;
+  color: #007bff;
+  padding: 0;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.turn-indicator {
+  font-weight: bold;
+  color: #28a745;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .game-settings {
@@ -254,13 +295,15 @@ input, select {
 }
 
 .active-player {
-  border-left: 5px solid #007bff !important;
+  background-color: #d4edda;
+  border-left: 4px solid #28a745;
   font-weight: bold;
 }
 
 .folded-player {
   color: #6c757d;
   text-decoration: line-through;
+  opacity: 0.7;
 }
 
 .player-actions {

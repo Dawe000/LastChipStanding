@@ -8,6 +8,8 @@ const GameTable = ({
   players, 
   activePlayerIndex, 
   dealerIndex,
+  smallBlindIndex,
+  bigBlindIndex,
   playerAction,
   betAmount,
   setBetAmount,
@@ -47,10 +49,12 @@ const GameTable = ({
               `}
             >
               {player.name} - ${player.stack}
-              {index === dealerIndex && " (Dealer)"}
+              {index === dealerIndex && <span className="position-indicator dealer-tag">D</span>}
+              {index === smallBlindIndex && <span className="position-indicator sb-tag">SB</span>}
+              {index === bigBlindIndex && <span className="position-indicator bb-tag">BB</span>}
               {player.bet > 0 && ` - Bet: $${player.bet}`}
               {player.folded && " (Folded)"}
-              {index === activePlayerIndex && " - YOUR TURN"}
+              {index === activePlayerIndex && <span className="turn-indicator"> YOUR TURN</span>}
             </li>
           ))}
         </ul>

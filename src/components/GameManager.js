@@ -26,6 +26,8 @@ const GameManager = () => {
   const [betAmount, setBetAmount] = useState('');
   const [isRoundComplete, setIsRoundComplete] = useState(false);
   const [playersActedThisRound, setPlayersActedThisRound] = useState({});
+  const [smallBlindIndex, setSmallBlindIndex] = useState(-1);
+  const [bigBlindIndex, setBigBlindIndex] = useState(-1);
 
   // All your existing functions: addPlayer, removePlayer, editPlayerMoney, startGame, etc.
   const addPlayer = (name) => {
@@ -99,6 +101,8 @@ const GameManager = () => {
     updatedPlayers[bbIndex].bet = bigBlind;
 
     setActivePlayerIndex((bbIndex + 1) % players.length);
+    setSmallBlindIndex(sbIndex); // Track small blind
+    setBigBlindIndex(bbIndex);   // Track big blind
 
     setPlayers(updatedPlayers);
     setPot(smallBlind + bigBlind);
@@ -531,6 +535,9 @@ const GameManager = () => {
       updatedPlayers[bbIndex].bet = bigBlind;
 
       setActivePlayerIndex((bbIndex + 1) % updatedPlayers.length);
+      setSmallBlindIndex(sbIndex); // Track small blind
+      setBigBlindIndex(bbIndex);   // Track big blind
+      
       setPlayers(updatedPlayers);
       setPot(smallBlind + bigBlind);
       setCurrentBet(bigBlind);
@@ -614,6 +621,8 @@ const GameManager = () => {
         players={players}
         activePlayerIndex={activePlayerIndex}
         dealerIndex={dealerIndex}
+        smallBlindIndex={smallBlindIndex} // Pass small blind index
+        bigBlindIndex={bigBlindIndex}     // Pass big blind index
         playerAction={playerAction}
         betAmount={betAmount}
         setBetAmount={setBetAmount}
