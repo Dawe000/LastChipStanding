@@ -181,10 +181,16 @@ case 'raise':
   const raiseDiff = raiseTotal - currentPlayer.bet;
   currentPlayer.stack -= raiseDiff;
   currentPlayer.bet = raiseTotal;
-  setCurrentBet(raiseTotal);
-  setPot(pot + raiseDiff);
+  
+  // Update these as immutable operations
+  const newPot = pot + raiseDiff;
+  setPot(newPot);
+  
+  const newCurrentBet = raiseTotal;
+  setCurrentBet(newCurrentBet);
 
-  // Reset playersActedThisRound for all players except the raiser
+  // Reset playersActedThisRound for all except the raiser
+  // This is crucial - when someone raises, everyone else needs to act again
   const newPlayersActedAfterRaise = {};
   newPlayersActedAfterRaise[activePlayerIndex] = true; // Only the raiser has acted
   setPlayersActedThisRound(newPlayersActedAfterRaise);
