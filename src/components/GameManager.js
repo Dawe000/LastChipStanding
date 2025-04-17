@@ -236,64 +236,53 @@ case 'raise':
   };
 
   // Move to next active player
-  const moveToNextPlayer = (currentPlayers) => {
-    // Count active (non-folded) players
-    const activePlayers = currentPlayers.filter(p => !p.folded);
-    
-    // If only one player remains active, end the round immediately
-    if (activePlayers.length === 1) {
-      setIsRoundComplete(true);
-      return;
+  // Move to next active player
+const moveToNextPlayer = (currentPlayers) => {
+  // Count active (non-folded) players
+  const activePlayers = currentPlayers.filter(p => !p.folded);
+  
+  // If only one player remains active, end the round immediately
+  if (activePlayers.length === 1) {
+    setIsRoundComplete(true);
+    return;
+  }
+  
+  // Check if all remaining players have acted and matched the current bet
+  let allPlayersActed = true;
+  let nextPlayerFound = false;
+  
+  // First, try to find the next player after the current active player
+  let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
+  let loopCount = 0;
+  
+  while (loopCount < currentPlayers.length) {
+    // Skip folded players
+    if (currentPlayers[nextIndex].folded) {
+      nextIndex = (nextIndex + 1) % currentPlayers.length;
+      loopCount++;
+      continue;
     }
     
-    // Check if all remaining players have acted and matched the current bet
-    let allPlayersActed = true;
-    for (let i = 0; i < currentPlayers.length; i++) {
-      const player = currentPlayers[i];
-      if (!player.folded && 
-          (!playersActedThisRound[i] || player.bet !== currentBet)) {
-        allPlayersActed = false;
-        break;
-      }
-    }
-    
-    if (allPlayersActed) {
-      setIsRoundComplete(true);
-      return;
-    }
-    
-    // Find next active player who needs to act
-    let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
-    let loopCount = 0;
-    
-    while (loopCount < currentPlayers.length) {
-      // Skip folded players
-      if (currentPlayers[nextIndex].folded) {
-        nextIndex = (nextIndex + 1) % currentPlayers.length;
-        loopCount++;
-        continue;
-      }
-      
-      // Skip players who have already acted and matched the current bet
-      if (playersActedThisRound[nextIndex] && 
-          currentPlayers[nextIndex].bet === currentBet) {
-        nextIndex = (nextIndex + 1) % currentPlayers.length;
-        loopCount++;
-        continue;
-      }
-      
-      // Found a valid player to act
+    // If this player hasn't acted or hasn't matched the current bet, they need to act
+    if (!playersActedThisRound[nextIndex] || currentPlayers[nextIndex].bet !== currentBet) {
+      nextPlayerFound = true;
       break;
     }
     
-    // If we've checked every player and couldn't find anyone who needs to act
-    if (loopCount >= currentPlayers.length) {
-      setIsRoundComplete(true);
-      return;
-    }
-    
-    setActivePlayerIndex(nextIndex);
-  };
+    // This player has already acted correctly, move to the next one
+    nextIndex = (nextIndex + 1) % currentPlayers.length;
+    loopCount++;
+  }
+  
+  // If we've gone through all players and couldn't find anyone who needs to act next
+  if (!nextPlayerFound) {
+    setIsRoundComplete(true);
+    return;
+  }
+  
+  // Set the next player
+  setActivePlayerIndex(nextIndex);
+};
 
   // Check if round is complete
   useEffect(() => {
