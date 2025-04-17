@@ -237,6 +237,7 @@ case 'raise':
 
   // Move to next active player
   // Move to next active player
+// Move to next active player
 const moveToNextPlayer = (currentPlayers) => {
   // Count active (non-folded) players
   const activePlayers = currentPlayers.filter(p => !p.folded);
@@ -247,11 +248,30 @@ const moveToNextPlayer = (currentPlayers) => {
     return;
   }
   
-  // Check if all remaining players have acted and matched the current bet
-  let allPlayersActed = true;
+  // Special handling for two player games
+  if (activePlayers.length === 2) {
+    // In a two player game, always switch to the other active player
+    // Find the other active player (not the current one)
+    const otherPlayerIndex = activePlayers.findIndex(p => 
+      currentPlayers.indexOf(p) !== activePlayerIndex
+    );
+    
+    if (otherPlayerIndex !== -1) {
+      const otherPlayer = activePlayers[otherPlayerIndex];
+      const actualIndex = currentPlayers.indexOf(otherPlayer);
+      
+      // If the other player needs to act (hasn't matched the current bet or hasn't acted)
+      if (!playersActedThisRound[actualIndex] || currentPlayers[actualIndex].bet !== currentBet) {
+        setActivePlayerIndex(actualIndex);
+        return;
+      }
+    }
+  }
+  
+  // For games with more players, use the regular logic
   let nextPlayerFound = false;
   
-  // First, try to find the next player after the current active player
+  // Try to find the next player after the current active player
   let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
   let loopCount = 0;
   
