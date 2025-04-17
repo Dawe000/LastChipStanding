@@ -395,7 +395,7 @@ const GameManager = () => {
 
   const advanceGameStage = useCallback(() => {
     console.log("Advancing game stage from", gameStage);
-
+    
     // Reset all bets for the next round
     const updatedPlayers = players.map(player => ({
       ...player,
@@ -405,9 +405,8 @@ const GameManager = () => {
 
     setPlayers(updatedPlayers);
     setCurrentBet(0);
-    // Reset who's acted for the new round
     setPlayersActedThisRound({});
-
+    
     const activePlayers = updatedPlayers.filter(p => !p.folded);
 
     if (activePlayers.length <= 1) {
@@ -416,7 +415,8 @@ const GameManager = () => {
       return;
     }
 
-    // Find first player after dealer who hasn't folded
+    // Find first active player to the left of the dealer
+    // Start with small blind position (dealer + 1)
     let nextActivePlayer = (dealerIndex + 1) % players.length;
     let loopCount = 0;
 
@@ -432,7 +432,7 @@ const GameManager = () => {
     }
 
     setActivePlayerIndex(nextActivePlayer);
-    console.log(`First player in new round: ${updatedPlayers[nextActivePlayer].name}`);
+    console.log(`First player in new round: ${updatedPlayers[nextActivePlayer].name} (starting from SB position)`);
 
     // Advance to next game stage
     switch (gameStage) {
