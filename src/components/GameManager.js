@@ -108,6 +108,10 @@ const GameManager = () => {
     const updatedPlayers = [...players];
     const currentPlayer = updatedPlayers[activePlayerIndex];
 
+    console.log(`Player ${currentPlayer.name} is taking action: ${action}`);
+    console.log("Current bet:", currentBet);
+    console.log("Players acted this round:", playersActedThisRound);
+
     const updatedPlayersActed = { ...playersActedThisRound };
     updatedPlayersActed[activePlayerIndex] = true;
 
@@ -159,16 +163,44 @@ const GameManager = () => {
           return;
         }
 
+        // Calculate how much to add to the pot
         const raiseDiff = raiseTotal - currentPlayer.bet;
         currentPlayer.stack -= raiseDiff;
         currentPlayer.bet = raiseTotal;
-        setCurrentBet(raiseTotal);
-        setPot(pot + raiseDiff);
 
+        // Important: Update these BEFORE calling moveToNextPlayer
         const newPlayersActed = {};
         newPlayersActed[activePlayerIndex] = true;
+
+        // Update pot and current bet
+        setPot(pot + raiseDiff);
+        setCurrentBet(raiseTotal);
+
+        console.log("Raise detected - resetting player actions to:", newPlayersActed);
+        console.log("Current bet updated to:", raiseTotal);
+
+        // SPECIAL HANDLING FOR 2-PLAYER GAMES
+        const activePlayersAfterRaise = updatedPlayers.filter(p => !p.folded);
+        if (activePlayersAfterRaise.length === 2) {
+          // In 2-player games, directly set the next player index
+          const otherPlayerIndex = updatedPlayers.findIndex(
+            (p, idx) => !p.folded && idx !== activePlayerIndex
+          );
+          
+          console.log(`2-player game raise detected, forcing turn to player: ${updatedPlayers[otherPlayerIndex].name}`);
+          
+          // Update all relevant state in one go
+          setPlayers(updatedPlayers);
+          setPlayersActedThisRound(newPlayersActed);
+          setActivePlayerIndex(otherPlayerIndex);
+          return;
+        }
+        
+        // For 3+ player games, use the normal flow
         setPlayersActedThisRound(newPlayersActed);
-        break;
+        setPlayers(updatedPlayers);
+        moveToNextPlayer(updatedPlayers);
+        return; // Skip the default flow at the end
 
       case 'check':
         if (currentPlayer.bet === currentBet) {
@@ -194,29 +226,60 @@ const GameManager = () => {
         break;
 
       case 'all-in':
-        // Calculate the player's total commitment (current bet + remaining stack)
+        // Calculate the player's total commitment
         const allInAmount = currentPlayer.stack + currentPlayer.bet;
 
         // How much more they're adding to the pot
         const allInDiff = currentPlayer.stack;
 
-        // Update current bet only if this all-in is higher
-        if (allInAmount > currentBet) {
-          setCurrentBet(allInAmount);
-
-          // Reset players' acted status as this is essentially a raise
-          const newPlayersActed = {};
-          newPlayersActed[activePlayerIndex] = true;
-          setPlayersActedThisRound(newPlayersActed);
-        } else {
-          // This is like a call that happens to be all remaining chips
-          updatedPlayersActed[activePlayerIndex] = true;
-        }
-
         // Update player's stack and bet
         currentPlayer.stack = 0;
         currentPlayer.bet = allInAmount;
+
+        // Update the pot
         setPot(pot + allInDiff);
+
+        // Check if this all-in is a raise
+        if (allInAmount > currentBet) {
+          // Reset players' acted status as this is essentially a raise
+          const allInPlayersActed = {};
+          allInPlayersActed[activePlayerIndex] = true;
+
+          // Update current bet
+          setCurrentBet(allInAmount);
+
+          console.log("All-in raise detected - resetting player actions to:", allInPlayersActed);
+
+          // SPECIAL HANDLING FOR 2-PLAYER GAMES
+          const activePlayersAfterAllIn = updatedPlayers.filter(p => !p.folded);
+          if (activePlayersAfterAllIn.length === 2) {
+            // In 2-player games, directly set the next player
+            const otherPlayerIndex = updatedPlayers.findIndex(
+              (p, idx) => !p.folded && idx !== activePlayerIndex
+            );
+
+            console.log(`2-player game all-in detected, forcing turn to player: ${updatedPlayers[otherPlayerIndex].name}`);
+
+            // Update all relevant state in one go
+            setPlayers(updatedPlayers);
+            setPlayersActedThisRound(allInPlayersActed);
+            setActivePlayerIndex(otherPlayerIndex);
+            return;
+          }
+
+          // For 3+ player games, use the normal flow
+          setPlayersActedThisRound(allInPlayersActed);
+          setPlayers(updatedPlayers);
+          moveToNextPlayer(updatedPlayers);
+          return;
+        } else {
+          // This is like a call that happens to be all remaining chips
+          updatedPlayersActed[activePlayerIndex] = true;
+          setPlayersActedThisRound(updatedPlayersActed);
+          setPlayers(updatedPlayers);
+          moveToNextPlayer(updatedPlayers);
+          return;
+        }
         break;
 
       default:
@@ -229,57 +292,107 @@ const GameManager = () => {
   };
 
   const moveToNextPlayer = (currentPlayers) => {
+    // First, check if only one player remains active
     const activePlayers = currentPlayers.filter(p => !p.folded);
-
     if (activePlayers.length === 1) {
       setIsRoundComplete(true);
       return;
     }
 
-    let allPlayersActed = true;
+    // Create a more accurate check for whether all players have acted correctly
+    let allActivePlayersActedAndMatched = true;
+
+    // For each active player, check if they've acted AND matched the current bet
     for (let i = 0; i < currentPlayers.length; i++) {
       const player = currentPlayers[i];
-      if (!player.folded &&
-        (!playersActedThisRound[i] || player.bet !== currentBet)) {
-        allPlayersActed = false;
+      // Skip folded players
+      if (player.folded) continue;
+
+      // A player needs to act if:
+      // 1. They haven't acted this round OR
+      // 2. They've acted but haven't matched the current bet
+      if (!playersActedThisRound[i] || player.bet !== currentBet) {
+        allActivePlayersActedAndMatched = false;
         break;
       }
     }
 
-    if (allPlayersActed) {
+    // If everyone has acted and matched the bet, complete the round
+    if (allActivePlayersActedAndMatched) {
       setIsRoundComplete(true);
       return;
     }
 
+    // Otherwise, find the next player who needs to act
+    // IMPORTANT: Always start from the next player after current one
     let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
     let loopCount = 0;
 
     while (loopCount < currentPlayers.length) {
+      // Skip players who have folded
       if (currentPlayers[nextIndex].folded) {
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;
       }
 
-      if (playersActedThisRound[nextIndex] &&
-        currentPlayers[nextIndex].bet === currentBet) {
+      // Skip players who have already acted AND matched the current bet
+      if (playersActedThisRound[nextIndex] && currentPlayers[nextIndex].bet === currentBet) {
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;
       }
 
+      // Found a player who needs to act
       break;
     }
 
+    // Safety check - if we've looped through all players and found none who need to act
     if (loopCount >= currentPlayers.length) {
+      // Double-check: is it because everyone has acted and matched?
+      let everyoneMatched = true;
+      for (let i = 0; i < currentPlayers.length; i++) {
+        if (currentPlayers[i].folded) continue;
+
+        if (currentPlayers[i].bet !== currentBet) {
+          everyoneMatched = false;
+          break;
+        }
+      }
+
+      if (everyoneMatched) {
+        console.log("All players have matched the current bet, round complete");
+        setIsRoundComplete(true);
+        return;
+      }
+
+      // Special case: only one player hasn't folded
+      const unfoldedCount = currentPlayers.filter(p => !p.folded).length;
+      if (unfoldedCount <= 1) {
+        console.log("Only one player remains, round complete");
+        setIsRoundComplete(true);
+        return;
+      }
+
+      // If we get here, something's wrong
+      console.error("Logic error: no players need to act but round isn't complete");
       setIsRoundComplete(true);
       return;
     }
 
+    // Set the next active player
     setActivePlayerIndex(nextIndex);
+
+    console.log(`Next player: ${currentPlayers[nextIndex]?.name || 'Unknown'} (index: ${nextIndex})`);
+    console.log("Players acted status:", playersActedThisRound);
+    console.log("Current bet:", currentBet);
+    console.log("Player bets:", currentPlayers.map(p => `${p.name}: ${p.bet}`));
   };
 
   const advanceGameStage = useCallback(() => {
+    console.log("Advancing game stage from", gameStage);
+
+    // Reset all bets for the next round
     const updatedPlayers = players.map(player => ({
       ...player,
       bet: 0,
@@ -288,14 +401,18 @@ const GameManager = () => {
 
     setPlayers(updatedPlayers);
     setCurrentBet(0);
+    // Reset who's acted for the new round
     setPlayersActedThisRound({});
+
     const activePlayers = updatedPlayers.filter(p => !p.folded);
 
     if (activePlayers.length <= 1) {
+      console.log("Only one active player, advancing to showdown");
       setGameStage(GAME_STAGES.SHOWDOWN);
       return;
     }
 
+    // Find first player after dealer who hasn't folded
     let nextActivePlayer = (dealerIndex + 1) % players.length;
     let loopCount = 0;
 
@@ -305,12 +422,15 @@ const GameManager = () => {
     }
 
     if (loopCount >= players.length) {
+      console.log("All players folded, advancing to showdown");
       setGameStage(GAME_STAGES.SHOWDOWN);
       return;
     }
 
     setActivePlayerIndex(nextActivePlayer);
+    console.log(`First player in new round: ${updatedPlayers[nextActivePlayer].name}`);
 
+    // Advance to next game stage
     switch (gameStage) {
       case GAME_STAGES.PREFLOP:
         setGameStage(GAME_STAGES.FLOP);
@@ -328,9 +448,9 @@ const GameManager = () => {
         break;
     }
   }, [
-    players, 
-    dealerIndex, 
-    gameStage, 
+    players,
+    dealerIndex,
+    gameStage,
     GAME_STAGES.FLOP,
     GAME_STAGES.PREFLOP,
     GAME_STAGES.RIVER,
@@ -346,7 +466,7 @@ const GameManager = () => {
         const winner = activePlayers[0];
         const winnerIndex = players.findIndex(p => p.name === winner.name);
 
-        const updatedPlayers = players.map((player, idx) => 
+        const updatedPlayers = players.map((player, idx) =>
           idx === winnerIndex
             ? { ...player, stack: player.stack + pot }
             : player
@@ -457,10 +577,10 @@ const GameManager = () => {
   };
 
   let gameContent;
-  
+
   if (gameStage === GAME_STAGES.SETUP) {
     gameContent = (
-      <PlayerSetup 
+      <PlayerSetup
         players={players}
         addPlayer={addPlayer}
         removePlayer={removePlayer}
@@ -476,7 +596,7 @@ const GameManager = () => {
     );
   } else if (gameStage === GAME_STAGES.SHOWDOWN) {
     gameContent = (
-      <Showdown 
+      <Showdown
         pot={pot}
         players={players}
         awardPot={awardPot}
@@ -487,7 +607,7 @@ const GameManager = () => {
     );
   } else {
     gameContent = (
-      <GameTable 
+      <GameTable
         gameStage={gameStage}
         pot={pot}
         currentBet={currentBet}
@@ -501,7 +621,7 @@ const GameManager = () => {
       />
     );
   }
-  
+
   return <div className="game-manager">{gameContent}</div>;
 };
 
