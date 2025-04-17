@@ -119,124 +119,137 @@ const GameManager = () => {
   };
 
   // Player actions
-  const playerAction = (action, amount = 0) => {
-    const updatedPlayers = [...players];
-    const currentPlayer = updatedPlayers[activePlayerIndex];
-    
-    // Mark that this player has acted
-    const updatedPlayersActed = {...playersActedThisRound};
-    updatedPlayersActed[activePlayerIndex] = true;
-    
-    switch(action) {
-      case 'fold':
-        currentPlayer.folded = true;
-        break;
-        
-      case 'call':
-        const callAmount = currentBet - currentPlayer.bet;
-        if (callAmount > 0) {
-          currentPlayer.stack -= callAmount;
-          currentPlayer.bet = currentBet;
-          setPot(pot + callAmount);
+  // Player actions
+const playerAction = (action, amount = 0) => {
+  const updatedPlayers = [...players];
+  const currentPlayer = updatedPlayers[activePlayerIndex];
+  
+  // Mark that this player has acted
+  const updatedPlayersActed = {...playersActedThisRound};
+  updatedPlayersActed[activePlayerIndex] = true;
+  
+  switch(action) {
+    case 'fold':
+      currentPlayer.folded = true;
+      break;
+      
+    case 'call':
+      const callAmount = currentBet - currentPlayer.bet;
+      if (callAmount > 0) {
+        currentPlayer.stack -= callAmount;
+        currentPlayer.bet = currentBet;
+        setPot(pot + callAmount);
+      }
+      
+      // Important: Check if everyone has now called or folded
+      let allMatched = true;
+      for (let i = 0; i < updatedPlayers.length; i++) {
+        if (!updatedPlayers[i].folded && 
+            (updatedPlayers[i].bet !== currentBet || 
+              (!updatedPlayersActed[i] && i !== activePlayerIndex))) {
+          allMatched = false;
+          break;
         }
+      }
+      
+      if (allMatched) {
+        // Everyone has matched the bet, go to next round immediately
+        setPlayers(updatedPlayers);
+        setPlayersActedThisRound(updatedPlayersActed);
+        setIsRoundComplete(true);
+        return;
+      }
+      break;
+      
+    case 'raise':
+      const raiseTotal = parseInt(amount);
+      if (isNaN(raiseTotal)) {
+        alert("Please enter a valid raise amount");
+        return;
+      }
+
+      if (raiseTotal > currentPlayer.stack) {
+        alert("You can't bet more than you have");
+        return;
+      }
+
+      if (raiseTotal <= currentBet) {
+        alert("Raise must be greater than current bet");
+        return;
+      }
+
+      // Calculate how much to add to the pot
+      const raiseDiff = raiseTotal - currentPlayer.bet;
+      currentPlayer.stack -= raiseDiff;
+      currentPlayer.bet = raiseTotal;
+      setPot(pot + raiseDiff);
+      setCurrentBet(raiseTotal);
+
+      // For 2-player games, explicitly reset the other player's acted status
+      if (updatedPlayers.filter(p => !p.folded).length === 2) {
+        const otherPlayerIndex = updatedPlayers.findIndex((p, idx) => 
+          !p.folded && idx !== activePlayerIndex
+        );
         
-        // Important: Check if everyone has now called or folded
-        let allMatched = true;
+        if (otherPlayerIndex !== -1) {
+          // Only the raiser has acted in this round
+          const newPlayersActed = {};
+          newPlayersActed[activePlayerIndex] = true;
+          setPlayersActedThisRound(newPlayersActed);
+          
+          // Set the next player directly to the other active player
+          setPlayers(updatedPlayers);
+          setActivePlayerIndex(otherPlayerIndex);
+          return; // Skip the moveToNextPlayer call
+        }
+      } else {
+        // For games with more players
+        // Reset playersActedThisRound for all except the raiser
+        const newPlayersActed = {};
+        newPlayersActed[activePlayerIndex] = true;
+        setPlayersActedThisRound(newPlayersActed);
+      }
+      break;
+      
+    case 'check':
+      // If checking is allowed (no bet to call)
+      if (currentPlayer.bet === currentBet) {
+        // After marking this player as having acted, check if this was the last player
+        const allPlayers = updatedPlayers.filter(p => !p.folded);
+        
+        // Count how many players have acted
+        let actedCount = 0;
         for (let i = 0; i < updatedPlayers.length; i++) {
           if (!updatedPlayers[i].folded && 
-              (updatedPlayers[i].bet !== currentBet || 
-               (!updatedPlayersActed[i] && i !== activePlayerIndex))) {
-            allMatched = false;
-            break;
+              (updatedPlayersActed[i] || i === activePlayerIndex)) {
+            actedCount++;
           }
         }
         
-        if (allMatched) {
-          // Everyone has matched the bet, go to next round immediately
+        // If all non-folded players have now acted, complete the round immediately
+        if (actedCount === allPlayers.length) {
+          // Don't proceed to moveToNextPlayer, end round directly
           setPlayers(updatedPlayers);
           setPlayersActedThisRound(updatedPlayersActed);
           setIsRoundComplete(true);
           return;
         }
-        break;
-        
-case 'raise':
-  const raiseTotal = parseInt(amount);
-  if (isNaN(raiseTotal)) {
-    alert("Please enter a valid raise amount");
-    return;
+      } else {
+        alert("You cannot check, you must call or fold");
+        return;
+      }
+      break;
+      
+    default:
+      break;
   }
-
-  if (raiseTotal > currentPlayer.stack) {
-    alert("You can't bet more than you have");
-    return;
-  }
-
-  if (raiseTotal <= currentBet) {
-    alert("Raise must be greater than current bet");
-    return;
-  }
-
-  // Calculate how much to add to the pot
-  const raiseDiff = raiseTotal - currentPlayer.bet;
-  currentPlayer.stack -= raiseDiff;
-  currentPlayer.bet = raiseTotal;
   
-  // Update these as immutable operations
-  const newPot = pot + raiseDiff;
-  setPot(newPot);
-  
-  const newCurrentBet = raiseTotal;
-  setCurrentBet(newCurrentBet);
-
-  // Reset playersActedThisRound for all except the raiser
-  // This is crucial - when someone raises, everyone else needs to act again
-  const newPlayersActedAfterRaise = {};
-  newPlayersActedAfterRaise[activePlayerIndex] = true; // Only the raiser has acted
-  setPlayersActedThisRound(newPlayersActedAfterRaise);
-  break;
-        
-      case 'check':
-        // If checking is allowed (no bet to call)
-        if (currentPlayer.bet === currentBet) {
-          // After marking this player as having acted, check if this was the last player
-          const allPlayers = updatedPlayers.filter(p => !p.folded);
-          
-          // Count how many players have acted
-          let actedCount = 0;
-          for (let i = 0; i < updatedPlayers.length; i++) {
-            if (!updatedPlayers[i].folded && 
-                (updatedPlayersActed[i] || i === activePlayerIndex)) {
-              actedCount++;
-            }
-          }
-          
-          // If all non-folded players have now acted, complete the round immediately
-          if (actedCount === allPlayers.length) {
-            // Don't proceed to moveToNextPlayer, end round directly
-            setPlayers(updatedPlayers);
-            setPlayersActedThisRound(updatedPlayersActed);
-            setIsRoundComplete(true);
-            return;
-          }
-        } else {
-          alert("You cannot check, you must call or fold");
-          return;
-        }
-        break;
-        
-      default:
-        break;
-    }
-    
-    // Move to next active player
-    setPlayersActedThisRound(updatedPlayersActed);
-    moveToNextPlayer(updatedPlayers);
-    setPlayers(updatedPlayers);
-  };
-
   // Move to next active player
-  // Move to next active player
+  setPlayersActedThisRound(updatedPlayersActed);
+  moveToNextPlayer(updatedPlayers);
+  setPlayers(updatedPlayers);
+};
+
 // Move to next active player
 const moveToNextPlayer = (currentPlayers) => {
   // Count active (non-folded) players
@@ -248,33 +261,33 @@ const moveToNextPlayer = (currentPlayers) => {
     return;
   }
   
-  // Special handling for two player games
+  // For 2-player games, make a simpler check
   if (activePlayers.length === 2) {
-    // In a two player game, always switch to the other active player
-    // Find the other active player (not the current one)
-    const otherPlayerIndex = activePlayers.findIndex(p => 
-      currentPlayers.indexOf(p) !== activePlayerIndex
-    );
-    
-    if (otherPlayerIndex !== -1) {
-      const otherPlayer = activePlayers[otherPlayerIndex];
-      const actualIndex = currentPlayers.indexOf(otherPlayer);
+    // Find the other active player who isn't the current player
+    for (let i = 0; i < currentPlayers.length; i++) {
+      // Skip the current player and folded players
+      if (i === activePlayerIndex || currentPlayers[i].folded) {
+        continue;
+      }
       
-      // If the other player needs to act (hasn't matched the current bet or hasn't acted)
-      if (!playersActedThisRound[actualIndex] || currentPlayers[actualIndex].bet !== currentBet) {
-        setActivePlayerIndex(actualIndex);
+      // Check if this player needs to act (hasn't acted or hasn't matched current bet)
+      if (!playersActedThisRound[i] || currentPlayers[i].bet !== currentBet) {
+        setActivePlayerIndex(i);
         return;
       }
     }
+    
+    // If we got here, everyone has acted and matched bets
+    setIsRoundComplete(true);
+    return;
   }
   
-  // For games with more players, use the regular logic
+  // For games with more than 2 players, use the standard logic
   let nextPlayerFound = false;
-  
-  // Try to find the next player after the current active player
   let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
   let loopCount = 0;
   
+  // Find next player who needs to act
   while (loopCount < currentPlayers.length) {
     // Skip folded players
     if (currentPlayers[nextIndex].folded) {
@@ -303,7 +316,6 @@ const moveToNextPlayer = (currentPlayers) => {
   // Set the next player
   setActivePlayerIndex(nextIndex);
 };
-
   // Check if round is complete
   useEffect(() => {
     if (isRoundComplete) {
