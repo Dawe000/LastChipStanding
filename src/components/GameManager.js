@@ -160,35 +160,38 @@ const GameManager = () => {
         }
         break;
         
-      case 'raise':
-        const raiseTotal = parseInt(amount);
-        if (isNaN(raiseTotal)) {
-          alert("Please enter a valid raise amount");
-          return;
-        }
-        
-        if (raiseTotal > currentPlayer.stack) {
-          alert("You can't bet more than you have");
-          return;
-        }
-        
-        if (raiseTotal <= currentBet) {
-          alert("Raise must be greater than current bet");
-          return;
-        }
-        
-        // Calculate how much to add to the pot
-        const raiseDiff = raiseTotal - currentPlayer.bet;
-        currentPlayer.stack -= raiseDiff;
-        currentPlayer.bet = raiseTotal;
-        setCurrentBet(raiseTotal);
-        setPot(pot + raiseDiff);
-        
-        // When someone raises, everyone needs to act again EXCEPT the raiser
-        const newPlayersActed = {};
-        newPlayersActed[activePlayerIndex] = true;
-        setPlayersActedThisRound(newPlayersActed);
-        break;
+case 'raise':
+  const raiseTotal = parseInt(amount);
+  if (isNaN(raiseTotal)) {
+    alert("Please enter a valid raise amount");
+    return;
+  }
+
+  if (raiseTotal > currentPlayer.stack) {
+    alert("You can't bet more than you have");
+    return;
+  }
+
+  if (raiseTotal <= currentBet) {
+    alert("Raise must be greater than current bet");
+    return;
+  }
+
+  // Calculate how much to add to the pot
+  const raiseDiff = raiseTotal - currentPlayer.bet;
+  currentPlayer.stack -= raiseDiff;
+  currentPlayer.bet = raiseTotal;
+  setCurrentBet(raiseTotal);
+  setPot(pot + raiseDiff);
+
+  // Reset playersActedThisRound for all except the raiser
+  const newPlayersActedAfterRaise = {};
+  newPlayersActedAfterRaise[activePlayerIndex] = true; // Only the raiser has acted
+  setPlayersActedThisRound(newPlayersActedAfterRaise);
+
+  // Move to the next player
+  setActivePlayerIndex((activePlayerIndex + 1) % players.length);
+  break;
         
       case 'check':
         // If checking is allowed (no bet to call)
