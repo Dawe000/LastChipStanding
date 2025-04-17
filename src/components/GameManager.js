@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PlayerSetup from './PlayerSetup';
 import GameTable from './GameTable';
 import Showdown from './Showdown';
@@ -26,7 +26,6 @@ const GameManager = () => {
   const [betAmount, setBetAmount] = useState('');
   const [isRoundComplete, setIsRoundComplete] = useState(false);
   const [playersActedThisRound, setPlayersActedThisRound] = useState({});
-  const [newPlayerName, setNewPlayerName] = useState('');
 
   // All your existing functions: addPlayer, removePlayer, editPlayerMoney, startGame, etc.
   const addPlayer = (name) => {
@@ -280,33 +279,7 @@ const GameManager = () => {
     setActivePlayerIndex(nextIndex);
   };
 
-  useEffect(() => {
-    if (isRoundComplete) {
-      const activePlayers = players.filter(p => !p.folded);
-
-      if (activePlayers.length === 1) {
-        const winner = activePlayers[0];
-        const winnerIndex = players.findIndex(p => p.name === winner.name);
-
-        const updatedPlayers = players.map((player, idx) => 
-          idx === winnerIndex
-            ? { ...player, stack: player.stack + pot }
-            : player
-        );
-
-        alert(`${winner.name} wins ${pot} chips as all others folded!`);
-        setPot(0);
-        setPlayers(updatedPlayers);
-        setGameStage(GAME_STAGES.SHOWDOWN);
-      } else {
-        advanceGameStage();
-      }
-
-      setIsRoundComplete(false);
-    }
-  }, [isRoundComplete, players, pot]);
-
-  const advanceGameStage = () => {
+  const advanceGameStage = useCallback(() => {
     const updatedPlayers = players.map(player => ({
       ...player,
       bet: 0,
@@ -354,7 +327,42 @@ const GameManager = () => {
       default:
         break;
     }
-  };
+  }, [
+    players, 
+    dealerIndex, 
+    gameStage, 
+    GAME_STAGES.FLOP,
+    GAME_STAGES.PREFLOP,
+    GAME_STAGES.RIVER,
+    GAME_STAGES.SHOWDOWN,
+    GAME_STAGES.TURN
+  ]);
+
+  useEffect(() => {
+    if (isRoundComplete) {
+      const activePlayers = players.filter(p => !p.folded);
+
+      if (activePlayers.length === 1) {
+        const winner = activePlayers[0];
+        const winnerIndex = players.findIndex(p => p.name === winner.name);
+
+        const updatedPlayers = players.map((player, idx) => 
+          idx === winnerIndex
+            ? { ...player, stack: player.stack + pot }
+            : player
+        );
+
+        alert(`${winner.name} wins ${pot} chips as all others folded!`);
+        setPot(0);
+        setPlayers(updatedPlayers);
+        setGameStage(GAME_STAGES.SHOWDOWN);
+      } else {
+        advanceGameStage();
+      }
+
+      setIsRoundComplete(false);
+    }
+  }, [isRoundComplete, players, pot, GAME_STAGES.SHOWDOWN, advanceGameStage]);
 
   const awardPot = (winnerIndex) => {
     if (pot <= 0) {
