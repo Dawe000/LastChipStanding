@@ -184,13 +184,10 @@ case 'raise':
   setCurrentBet(raiseTotal);
   setPot(pot + raiseDiff);
 
-  // Reset playersActedThisRound for all except the raiser
+  // Reset playersActedThisRound for all players except the raiser
   const newPlayersActedAfterRaise = {};
   newPlayersActedAfterRaise[activePlayerIndex] = true; // Only the raiser has acted
   setPlayersActedThisRound(newPlayersActedAfterRaise);
-
-  // Move to the next player
-  setActivePlayerIndex((activePlayerIndex + 1) % players.length);
   break;
         
       case 'check':
