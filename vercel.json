@@ -1,9 +1,10 @@
 {
   "version": 2,
   "redirects": [
-    { "source": "/", "destination": "/landing.html", "permanent": false }
+    { "source": "/", "destination": "/landing", "permanent": false }
   ],
   "rewrites": [
+    { "source": "/landing", "destination": "/landing.html" },
     { "source": "/app", "destination": "/index.html" },
     { "source": "/app/(.*)", "destination": "/index.html" }
   ],
