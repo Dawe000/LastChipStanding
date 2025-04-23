@@ -9,12 +9,5 @@
     { "source": "/app", "destination": "/index.html" },
     { "source": "/app/(.*)", "destination": "/index.html" }
   ],
-  "trailingSlash": false,
-  "sitemap": [
-    {
-      "url": {
-        "loc": "https://lastchipstanding.dawidpisarczyk.com/landing"
-      }
-    }
-  ]
+  "trailingSlash": false
 }
