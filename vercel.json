@@ -1,12 +1,20 @@
 {
   "version": 2,
   "redirects": [
-    { "source": "/", "destination": "/landing", "permanent": false }
+    { "source": "/", "destination": "/landing", "permanent": false },
+    { "source": "/landing/", "destination": "/landing", "permanent": true }
   ],
   "rewrites": [
     { "source": "/landing", "destination": "/landing.html" },
     { "source": "/app", "destination": "/index.html" },
     { "source": "/app/(.*)", "destination": "/index.html" }
   ],
-  "trailingSlash": false
+  "trailingSlash": false,
+  "sitemap": [
+    {
+      "url": {
+        "loc": "https://lastchipstanding.dawidpisarczyk.com/landing"
+      }
+    }
+  ]
 }
