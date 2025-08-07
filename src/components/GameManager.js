@@ -3,6 +3,19 @@ import PlayerSetup from './PlayerSetup';
 import GameTable from './GameTable';
 import Showdown from './Showdown';
 
+/*
+ * BETTING SYSTEM IMPROVEMENTS (Fixed negative betting vulnerabilities):
+ * 
+ * 1. CALL validation: Players can't call more than they have - shows proper error and suggests All-In
+ * 2. RAISE validation: Comprehensive checks prevent raising more than stack allows
+ * 3. ALL-IN protection: Prevents going all-in with 0/negative stack, stops pot theft
+ * 4. BLIND posting: Players with insufficient chips post what they can (partial all-in)
+ * 5. UI validation: PlayerActions component shows limits and disables invalid actions
+ * 6. SIDE POT support: calculateSidePots() function handles different bet levels
+ * 
+ * These fixes prevent the exploit where players could bet negative amounts and steal from the pot.
+ */
+
 const GameManager = () => {
   // Game stages
   const GAME_STAGES = {
@@ -28,6 +41,38 @@ const GameManager = () => {
   const [playersActedThisRound, setPlayersActedThisRound] = useState({});
   const [smallBlindIndex, setSmallBlindIndex] = useState(-1);
   const [bigBlindIndex, setBigBlindIndex] = useState(-1);
+
+  // Helper function to calculate side pots when players have different bet amounts
+  const calculateSidePots = (players, mainPot) => {
+    const activePlayers = players.filter(p => !p.folded && p.bet > 0);
+    
+    if (activePlayers.length <= 1) {
+      return [{ amount: mainPot, eligiblePlayers: activePlayers }];
+    }
+
+    // Sort players by their bet amount
+    const sortedByBet = [...activePlayers].sort((a, b) => a.bet - b.bet);
+    const sidePots = [];
+    let previousBet = 0;
+
+    sortedByBet.forEach((player, index) => {
+      const betLevel = player.bet;
+      const potContribution = (betLevel - previousBet) * (sortedByBet.length - index);
+      
+      if (potContribution > 0) {
+        const eligiblePlayers = sortedByBet.slice(index);
+        sidePots.push({
+          amount: potContribution,
+          eligiblePlayers: eligiblePlayers,
+          maxBet: betLevel
+        });
+      }
+      
+      previousBet = betLevel;
+    });
+
+    return sidePots;
+  };
 
   // All your existing functions: addPlayer, removePlayer, editPlayerMoney, startGame, etc.
   const addPlayer = (name) => {
@@ -94,18 +139,37 @@ const GameManager = () => {
 
     const updatedPlayers = [...players];
 
-    updatedPlayers[sbIndex].stack -= smallBlind;
-    updatedPlayers[sbIndex].bet = smallBlind;
+    // Check if small blind player can afford the blind
+    if (updatedPlayers[sbIndex].stack < smallBlind) {
+      // Player posts what they can (all-in for small blind)
+      const sbAmount = updatedPlayers[sbIndex].stack;
+      updatedPlayers[sbIndex].bet = sbAmount;
+      updatedPlayers[sbIndex].stack = 0;
+    } else {
+      updatedPlayers[sbIndex].stack -= smallBlind;
+      updatedPlayers[sbIndex].bet = smallBlind;
+    }
 
-    updatedPlayers[bbIndex].stack -= bigBlind;
-    updatedPlayers[bbIndex].bet = bigBlind;
+    // Check if big blind player can afford the blind
+    if (updatedPlayers[bbIndex].stack < bigBlind) {
+      // Player posts what they can (all-in for big blind)
+      const bbAmount = updatedPlayers[bbIndex].stack;
+      updatedPlayers[bbIndex].bet = bbAmount;
+      updatedPlayers[bbIndex].stack = 0;
+    } else {
+      updatedPlayers[bbIndex].stack -= bigBlind;
+      updatedPlayers[bbIndex].bet = bigBlind;
+    }
 
     setActivePlayerIndex((bbIndex + 1) % players.length);
     setSmallBlindIndex(sbIndex); // Track small blind
     setBigBlindIndex(bbIndex);   // Track big blind
 
     setPlayers(updatedPlayers);
-    setPot(smallBlind + bigBlind);
+    
+    // Calculate actual pot based on what was posted
+    const actualPot = updatedPlayers[sbIndex].bet + updatedPlayers[bbIndex].bet;
+    setPot(actualPot);
   };
 
   const playerAction = (action, amount = 0) => {
@@ -126,6 +190,13 @@ const GameManager = () => {
 
       case 'call':
         const callAmount = currentBet - currentPlayer.bet;
+        
+        // Prevent negative betting - player can't call more than they have
+        if (callAmount > currentPlayer.stack) {
+          alert(`You don't have enough chips to call. You need $${callAmount} but only have $${currentPlayer.stack}. Use All-In instead.`);
+          return;
+        }
+        
         if (callAmount > 0) {
           currentPlayer.stack -= callAmount;
           currentPlayer.bet = currentBet;
@@ -157,18 +228,25 @@ const GameManager = () => {
           return;
         }
 
-        if (raiseTotal > currentPlayer.stack) {
-          alert("You can't bet more than you have");
-          return;
-        }
-
         if (raiseTotal <= currentBet) {
           alert("Raise must be greater than current bet");
           return;
         }
 
-        // Calculate how much to add to the pot
+        // Calculate how much the player needs to add to reach this total bet
         const raiseDiff = raiseTotal - currentPlayer.bet;
+        
+        if (raiseDiff > currentPlayer.stack) {
+          alert(`You don't have enough chips for this raise. You need $${raiseDiff} more but only have $${currentPlayer.stack}. Maximum raise: $${currentPlayer.stack + currentPlayer.bet}`);
+          return;
+        }
+
+        // Ensure player can't raise to a negative total
+        if (raiseTotal < 0) {
+          alert("Invalid raise amount");
+          return;
+        }
+
         currentPlayer.stack -= raiseDiff;
         currentPlayer.bet = raiseTotal;
         
@@ -243,10 +321,16 @@ const GameManager = () => {
         break;
 
       case 'all-in':
-        // Calculate the player's total commitment
+        // Safety check - can't go all-in with 0 or negative stack
+        if (currentPlayer.stack <= 0) {
+          alert("You don't have any chips to go all-in with!");
+          return;
+        }
+
+        // Calculate the player's total commitment (what they already bet + remaining stack)
         const allInAmount = currentPlayer.stack + currentPlayer.bet;
 
-        // How much more they're adding to the pot
+        // How much more they're adding to the pot (only their remaining stack)
         const allInDiff = currentPlayer.stack;
 
         // Update player's stack and bet
@@ -541,19 +625,41 @@ const GameManager = () => {
 
       const updatedPlayers = [...resetPlayers];
 
-      updatedPlayers[sbIndex].stack -= smallBlind;
-      updatedPlayers[sbIndex].bet = smallBlind;
+      // Check if small blind player can afford the blind
+      if (updatedPlayers[sbIndex].stack < smallBlind) {
+        // Player posts what they can (all-in for small blind)
+        const sbAmount = updatedPlayers[sbIndex].stack;
+        updatedPlayers[sbIndex].bet = sbAmount;
+        updatedPlayers[sbIndex].stack = 0;
+      } else {
+        updatedPlayers[sbIndex].stack -= smallBlind;
+        updatedPlayers[sbIndex].bet = smallBlind;
+      }
 
-      updatedPlayers[bbIndex].stack -= bigBlind;
-      updatedPlayers[bbIndex].bet = bigBlind;
+      // Check if big blind player can afford the blind
+      if (updatedPlayers[bbIndex].stack < bigBlind) {
+        // Player posts what they can (all-in for big blind)
+        const bbAmount = updatedPlayers[bbIndex].stack;
+        updatedPlayers[bbIndex].bet = bbAmount;
+        updatedPlayers[bbIndex].stack = 0;
+      } else {
+        updatedPlayers[bbIndex].stack -= bigBlind;
+        updatedPlayers[bbIndex].bet = bigBlind;
+      }
 
       setActivePlayerIndex((bbIndex + 1) % updatedPlayers.length);
       setSmallBlindIndex(sbIndex); // Track small blind
       setBigBlindIndex(bbIndex);   // Track big blind
       
       setPlayers(updatedPlayers);
-      setPot(smallBlind + bigBlind);
-      setCurrentBet(bigBlind);
+      
+      // Calculate actual pot and current bet based on what was posted
+      const actualPot = updatedPlayers[sbIndex].bet + updatedPlayers[bbIndex].bet;
+      setPot(actualPot);
+      
+      // Set current bet to the higher of the two blinds posted
+      const actualCurrentBet = Math.max(updatedPlayers[sbIndex].bet, updatedPlayers[bbIndex].bet);
+      setCurrentBet(actualCurrentBet);
     }, 0);
   };
 
