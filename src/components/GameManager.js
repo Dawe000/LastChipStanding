@@ -176,6 +176,12 @@ const GameManager = () => {
     const updatedPlayers = [...players];
     const currentPlayer = updatedPlayers[activePlayerIndex];
 
+    // Safety check: all-in players cannot take actions
+    if (currentPlayer.stack === 0 && action !== 'fold') {
+      console.log(`${currentPlayer.name} is all-in and cannot take action: ${action}`);
+      return;
+    }
+
     console.log(`Player ${currentPlayer.name} is taking action: ${action}`);
     console.log("Current bet:", currentBet);
     console.log("Players acted this round:", playersActedThisRound);
@@ -460,6 +466,7 @@ const GameManager = () => {
 
       // Skip players who are all-in (can't act further)
       if (nextPlayer.stack === 0) {
+        console.log(`Skipping ${nextPlayer.name} - they are all-in`);
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;

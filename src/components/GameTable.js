@@ -54,13 +54,14 @@ const GameTable = ({
               {index === bigBlindIndex && <span className="position-indicator bb-tag">BB</span>}
               {player.bet > 0 && ` - Bet: $${player.bet}`}
               {player.folded && " (Folded)"}
-              {index === activePlayerIndex && <span className="turn-indicator"> YOUR TURN</span>}
+              {!player.folded && player.stack === 0 && " (ALL-IN)"}
+              {index === activePlayerIndex && !player.folded && player.stack > 0 && <span className="turn-indicator"> YOUR TURN</span>}
             </li>
           ))}
         </ul>
       </div>
       
-      {players[activePlayerIndex] && !players[activePlayerIndex].folded && (
+      {players[activePlayerIndex] && !players[activePlayerIndex].folded && players[activePlayerIndex].stack > 0 && (
         <PlayerActions 
           player={players[activePlayerIndex]}
           currentBet={currentBet}
