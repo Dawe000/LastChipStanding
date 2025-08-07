@@ -191,25 +191,37 @@ const GameManager = () => {
       case 'call':
         const callAmount = currentBet - currentPlayer.bet;
         
-        // Prevent negative betting - player can't call more than they have
+        // If player can't afford the full call amount, they go all-in automatically
         if (callAmount > currentPlayer.stack) {
-          alert(`You don't have enough chips to call. You need $${callAmount} but only have $${currentPlayer.stack}. Use All-In instead.`);
-          return;
-        }
-        
-        if (callAmount > 0) {
+          // Player goes all-in with remaining chips (this is standard poker behavior)
+          const allInAmount = currentPlayer.stack;
+          const newTotalBet = currentPlayer.bet + allInAmount;
+          
+          currentPlayer.stack = 0;
+          currentPlayer.bet = newTotalBet;
+          setPot(pot + allInAmount);
+          
+          console.log(`${currentPlayer.name} called with all-in: $${allInAmount} (total bet: $${newTotalBet})`);
+        } else if (callAmount > 0) {
+          // Normal call - player has enough chips
           currentPlayer.stack -= callAmount;
           currentPlayer.bet = currentBet;
           setPot(pot + callAmount);
         }
 
+        // Check if all active players have acted and matched their maximum possible bets
         let allMatched = true;
         for (let i = 0; i < updatedPlayers.length; i++) {
-          if (!updatedPlayers[i].folded &&
-            (updatedPlayers[i].bet !== currentBet ||
-              (!updatedPlayersActed[i] && i !== activePlayerIndex))) {
-            allMatched = false;
-            break;
+          if (!updatedPlayers[i].folded) {
+            // Player needs to act if they haven't acted AND they can still bet more
+            if (!updatedPlayersActed[i] && i !== activePlayerIndex && updatedPlayers[i].stack > 0) {
+              // Only if they also haven't matched the current bet (and have chips to do so)
+              const playerCallAmount = currentBet - updatedPlayers[i].bet;
+              if (playerCallAmount > 0 && updatedPlayers[i].stack >= playerCallAmount) {
+                allMatched = false;
+                break;
+              }
+            }
           }
         }
 
@@ -400,45 +412,61 @@ const GameManager = () => {
       return;
     }
 
-    // Create a more accurate check for whether all players have acted correctly
-    let allActivePlayersActedAndMatched = true;
+    // Check if all active players have either:
+    // 1. Acted and matched the current bet (or gone all-in)
+    // 2. Are all-in and can't act further
+    let allActivePlayersActedOrAllIn = true;
 
-    // For each active player, check if they've acted AND matched the current bet
     for (let i = 0; i < currentPlayers.length; i++) {
       const player = currentPlayers[i];
       // Skip folded players
       if (player.folded) continue;
 
-      // A player needs to act if:
-      // 1. They haven't acted this round OR
-      // 2. They've acted but haven't matched the current bet
-      if (!playersActedThisRound[i] || player.bet !== currentBet) {
-        allActivePlayersActedAndMatched = false;
+      // Player needs to act if:
+      // 1. They haven't acted this round AND
+      // 2. They have chips to act with AND  
+      // 3. They haven't matched the current bet (or can't because they're all-in)
+      const hasActed = playersActedThisRound[i];
+      const isAllIn = player.stack === 0;
+      const hasMatchedBet = player.bet === currentBet;
+      const canAffordCurrentBet = (currentBet - player.bet) <= player.stack;
+
+      // A player needs to act if they haven't acted AND they have chips AND they can afford to match/call
+      if (!hasActed && !isAllIn && !hasMatchedBet && canAffordCurrentBet) {
+        allActivePlayersActedOrAllIn = false;
         break;
       }
     }
 
-    // If everyone has acted and matched the bet, complete the round
-    if (allActivePlayersActedAndMatched) {
+    // If everyone has acted or is all-in, complete the round
+    if (allActivePlayersActedOrAllIn) {
       setIsRoundComplete(true);
       return;
     }
 
-    // Otherwise, find the next player who needs to act
-    // IMPORTANT: Always start from the next player after current one
+    // Find the next player who needs to act
     let nextIndex = (activePlayerIndex + 1) % currentPlayers.length;
     let loopCount = 0;
 
     while (loopCount < currentPlayers.length) {
-      // Skip players who have folded
-      if (currentPlayers[nextIndex].folded) {
+      const nextPlayer = currentPlayers[nextIndex];
+      
+      // Skip folded players
+      if (nextPlayer.folded) {
+        nextIndex = (nextIndex + 1) % currentPlayers.length;
+        loopCount++;
+        continue;
+      }
+
+      // Skip players who are all-in (can't act further)
+      if (nextPlayer.stack === 0) {
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;
       }
 
       // Skip players who have already acted AND matched the current bet
-      if (playersActedThisRound[nextIndex] && currentPlayers[nextIndex].bet === currentBet) {
+      if (playersActedThisRound[nextIndex] && nextPlayer.bet === currentBet) {
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;
@@ -450,33 +478,7 @@ const GameManager = () => {
 
     // Safety check - if we've looped through all players and found none who need to act
     if (loopCount >= currentPlayers.length) {
-      // Double-check: is it because everyone has acted and matched?
-      let everyoneMatched = true;
-      for (let i = 0; i < currentPlayers.length; i++) {
-        if (currentPlayers[i].folded) continue;
-
-        if (currentPlayers[i].bet !== currentBet) {
-          everyoneMatched = false;
-          break;
-        }
-      }
-
-      if (everyoneMatched) {
-        console.log("All players have matched the current bet, round complete");
-        setIsRoundComplete(true);
-        return;
-      }
-
-      // Special case: only one player hasn't folded
-      const unfoldedCount = currentPlayers.filter(p => !p.folded).length;
-      if (unfoldedCount <= 1) {
-        console.log("Only one player remains, round complete");
-        setIsRoundComplete(true);
-        return;
-      }
-
-      // If we get here, something's wrong
-      console.error("Logic error: no players need to act but round isn't complete");
+      console.log("All players have acted or are all-in, completing round");
       setIsRoundComplete(true);
       return;
     }
@@ -487,7 +489,7 @@ const GameManager = () => {
     console.log(`Next player: ${currentPlayers[nextIndex]?.name || 'Unknown'} (index: ${nextIndex})`);
     console.log("Players acted status:", playersActedThisRound);
     console.log("Current bet:", currentBet);
-    console.log("Player bets:", currentPlayers.map(p => `${p.name}: ${p.bet}`));
+    console.log("Player bets:", currentPlayers.map(p => `${p.name}: $${p.bet} (stack: $${p.stack})`));
   };
 
   const advanceGameStage = useCallback(() => {
