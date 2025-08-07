@@ -4,6 +4,7 @@ import PlayerActions from './PlayerActions';
 const GameTable = ({ 
   gameStage, 
   pot, 
+  sidePots = [],
   currentBet, 
   players, 
   activePlayerIndex, 
@@ -20,7 +21,18 @@ const GameTable = ({
       <div className="game-info">
         <h2>LastChipStanding: {gameStage.toUpperCase()}</h2>
         <div className="pot">
-          <h3>Pot: ${pot}</h3>
+          <h3>Total Pot: ${pot}</h3>
+          {sidePots.length > 1 && (
+            <div className="side-pots-preview">
+              <h4>Side Pots:</h4>
+              {sidePots.map((sidePot, index) => (
+                <div key={index} className="side-pot-preview">
+                  <span>Pot {index + 1}: ${sidePot.amount}</span>
+                  <small> (eligible: {sidePot.eligiblePlayers.join(', ')})</small>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="current-bet">
           <h3>Current Bet: ${currentBet}</h3>

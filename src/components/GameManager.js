@@ -32,6 +32,7 @@ const GameManager = () => {
   const [gameStage, setGameStage] = useState(GAME_STAGES.SETUP);
   const [activePlayerIndex, setActivePlayerIndex] = useState(0);
   const [pot, setPot] = useState(0);
+  const [sidePots, setSidePots] = useState([]); // Track multiple side pots
   const [smallBlind, setSmallBlind] = useState(5);
   const [bigBlind, setBigBlind] = useState(10);
   const [dealerIndex, setDealerIndex] = useState(0);
@@ -43,35 +44,56 @@ const GameManager = () => {
   const [bigBlindIndex, setBigBlindIndex] = useState(-1);
 
   // Helper function to calculate side pots when players have different bet amounts
-  const calculateSidePots = (players, mainPot) => {
-    const activePlayers = players.filter(p => !p.folded && p.bet > 0);
+  const calculateSidePots = (playersList) => {
+    const activePlayers = playersList.filter(p => !p.folded && p.bet > 0);
     
     if (activePlayers.length <= 1) {
-      return [{ amount: mainPot, eligiblePlayers: activePlayers }];
+      const totalPot = activePlayers.reduce((sum, p) => sum + p.bet, 0);
+      return [{ amount: totalPot, eligiblePlayers: activePlayers.map(p => p.name) }];
     }
 
-    // Sort players by their bet amount
+    // Sort players by their bet amount (lowest to highest)
     const sortedByBet = [...activePlayers].sort((a, b) => a.bet - b.bet);
-    const sidePots = [];
-    let previousBet = 0;
+    const sidePotArray = [];
+    let previousBetLevel = 0;
 
-    sortedByBet.forEach((player, index) => {
-      const betLevel = player.bet;
-      const potContribution = (betLevel - previousBet) * (sortedByBet.length - index);
+    // Create side pots for each bet level
+    for (let i = 0; i < sortedByBet.length; i++) {
+      const currentBetLevel = sortedByBet[i].bet;
       
-      if (potContribution > 0) {
-        const eligiblePlayers = sortedByBet.slice(index);
-        sidePots.push({
-          amount: potContribution,
-          eligiblePlayers: eligiblePlayers,
-          maxBet: betLevel
-        });
+      if (currentBetLevel > previousBetLevel) {
+        const betDifference = currentBetLevel - previousBetLevel;
+        // All players from this index onwards contributed to this pot level
+        const contributingPlayers = sortedByBet.slice(i);
+        const potAmount = betDifference * contributingPlayers.length;
+        
+        if (potAmount > 0) {
+          sidePotArray.push({
+            amount: potAmount,
+            eligiblePlayers: contributingPlayers.map(p => p.name),
+            minBet: previousBetLevel + 1,
+            maxBet: currentBetLevel
+          });
+        }
+        
+        previousBetLevel = currentBetLevel;
       }
-      
-      previousBet = betLevel;
-    });
+    }
 
-    return sidePots;
+    return sidePotArray;
+  };
+
+  // Function to update side pots when betting round completes
+  const updateSidePots = () => {
+    const calculatedSidePots = calculateSidePots(players);
+    setSidePots(calculatedSidePots);
+    
+    // Calculate total pot amount for display
+    const totalPotAmount = calculatedSidePots.reduce((sum, pot) => sum + pot.amount, 0);
+    setPot(totalPotAmount);
+    
+    console.log("Side pots calculated:", calculatedSidePots);
+    return calculatedSidePots;
   };
 
   // All your existing functions: addPlayer, removePlayer, editPlayerMoney, startGame, etc.
@@ -234,6 +256,8 @@ const GameManager = () => {
         if (allMatched) {
           setPlayers(updatedPlayers);
           setPlayersActedThisRound(updatedPlayersActed);
+          // Calculate side pots before completing round
+          setTimeout(() => updateSidePots(), 0);
           setIsRoundComplete(true);
           return;
         }
@@ -446,6 +470,8 @@ const GameManager = () => {
 
     // If everyone has acted or is all-in, complete the round
     if (allActivePlayersActedOrAllIn) {
+      // Calculate side pots before completing round
+      setTimeout(() => updateSidePots(), 0);
       setIsRoundComplete(true);
       return;
     }
@@ -594,21 +620,55 @@ const GameManager = () => {
     }
   }, [isRoundComplete, players, pot, GAME_STAGES.SHOWDOWN, advanceGameStage]);
 
-  const awardPot = (winnerIndex) => {
-    if (pot <= 0) {
-      alert("There is no pot to award.");
-      return;
+  const awardPot = (winnerIndex, specificPotIndex = null) => {
+    if (specificPotIndex !== null) {
+      // Award a specific side pot
+      const sidePot = sidePots[specificPotIndex];
+      if (!sidePot || sidePot.amount <= 0) {
+        alert("Invalid side pot.");
+        return;
+      }
+
+      const winnerName = players[winnerIndex].name;
+      
+      // Check eligibility
+      if (!sidePot.eligiblePlayers.includes(winnerName)) {
+        alert(`${winnerName} is not eligible for this side pot!`);
+        return;
+      }
+
+      const updatedPlayers = [...players];
+      updatedPlayers[winnerIndex].stack += sidePot.amount;
+
+      // Remove the awarded side pot
+      const updatedSidePots = sidePots.filter((_, index) => index !== specificPotIndex);
+      setSidePots(updatedSidePots);
+      
+      // Update total pot
+      const newTotalPot = updatedSidePots.reduce((sum, pot) => sum + pot.amount, 0);
+      setPot(newTotalPot);
+
+      setPlayers(updatedPlayers);
+
+      alert(`${winnerName} was awarded Side Pot ${specificPotIndex + 1}: $${sidePot.amount}!`);
+    } else {
+      // Award all remaining pots (traditional method)
+      if (pot <= 0) {
+        alert("There is no pot to award.");
+        return;
+      }
+
+      const winnerName = players[winnerIndex].name;
+      const potAmount = pot;
+      const updatedPlayers = [...players];
+      updatedPlayers[winnerIndex].stack += pot;
+
+      setPlayers(updatedPlayers);
+      setPot(0);
+      setSidePots([]);
+
+      alert(`${winnerName} was awarded all remaining pots: $${potAmount} chips!`);
     }
-
-    const winnerName = players[winnerIndex].name;
-    const potAmount = pot;
-    const updatedPlayers = [...players];
-    updatedPlayers[winnerIndex].stack += pot;
-
-    setPlayers(updatedPlayers);
-    setPot(0);
-
-    alert(`${winnerName} was awarded ${potAmount} chips!`);
   };
 
   const startNewHand = () => {
@@ -624,6 +684,7 @@ const GameManager = () => {
 
     setPlayers(resetPlayers);
     setPot(0);
+    setSidePots([]);
     setCurrentBet(0);
     setPlayersActedThisRound({});
     setGameStage(GAME_STAGES.PREFLOP);
@@ -685,6 +746,7 @@ const GameManager = () => {
     setGameStage(GAME_STAGES.SETUP);
     setActivePlayerIndex(0);
     setPot(0);
+    setSidePots([]);
     setCurrentBet(0);
     setDealerIndex(0);
     setPlayersActedThisRound({});
@@ -705,6 +767,7 @@ const GameManager = () => {
     setGameStage(GAME_STAGES.SETUP);
     setActivePlayerIndex(0);
     setPot(0);
+    setSidePots([]);
     setCurrentBet(0);
     setPlayersActedThisRound({});
     setIsRoundComplete(false);
@@ -733,6 +796,7 @@ const GameManager = () => {
     gameContent = (
       <Showdown
         pot={pot}
+        sidePots={sidePots}
         players={players}
         awardPot={awardPot}
         startNewHand={startNewHand}
@@ -745,6 +809,7 @@ const GameManager = () => {
       <GameTable
         gameStage={gameStage}
         pot={pot}
+        sidePots={sidePots}
         currentBet={currentBet}
         players={players}
         activePlayerIndex={activePlayerIndex}
