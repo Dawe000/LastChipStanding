@@ -19,10 +19,9 @@ const PlayerActions = ({ player, currentBet, playerAction, betAmount, setBetAmou
         {player.bet < currentBet ? (
           <button 
             onClick={() => playerAction('call')}
-            disabled={!canCall}
-            title={!canCall ? `Need $${callAmount} but only have $${player.stack}` : ''}
+            title={!canCall ? `Will go all-in with $${player.stack}` : `Call $${callAmount}`}
           >
-            {canCall ? `Call $${callAmount}` : `Can't Call ($${callAmount})`}
+            {canCall ? `Call $${callAmount}` : `Call All-In ($${player.stack})`}
           </button>
         ) : (
           <button onClick={() => playerAction('check')}>
