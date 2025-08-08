@@ -192,6 +192,10 @@ const GameManager = () => {
     // Calculate actual pot based on what was posted
     const actualPot = updatedPlayers[sbIndex].bet + updatedPlayers[bbIndex].bet;
     setPot(actualPot);
+
+    // Align current bet with the highest blind actually posted (handles short stacks)
+    const actualCurrentBet = Math.max(updatedPlayers[sbIndex].bet, updatedPlayers[bbIndex].bet);
+    setCurrentBet(actualCurrentBet);
   };
 
   const playerAction = (action, amount = 0) => {
@@ -237,18 +241,17 @@ const GameManager = () => {
           setPot(pot + callAmount);
         }
 
-        // Check if all active players have acted and matched their maximum possible bets
+        // Check if all active players have acted or are all-in, and everyone who can act has matched the current bet
         let allMatched = true;
         for (let i = 0; i < updatedPlayers.length; i++) {
-          if (!updatedPlayers[i].folded) {
-            // Player needs to act if they haven't acted AND they can still bet more
-            if (!updatedPlayersActed[i] && i !== activePlayerIndex && updatedPlayers[i].stack > 0) {
-              // Only if they also haven't matched the current bet (and have chips to do so)
-              const playerCallAmount = currentBet - updatedPlayers[i].bet;
-              if (playerCallAmount > 0 && updatedPlayers[i].stack >= playerCallAmount) {
-                allMatched = false;
-                break;
-              }
+          const p = updatedPlayers[i];
+          if (!p.folded) {
+            const isAllIn = p.stack === 0;
+            const hasMatchedBet = p.bet === currentBet;
+            // Any non-folded, non-all-in player who hasn't matched the current bet must still act (even if they can't afford the full call)
+            if (!isAllIn && !hasMatchedBet && i !== activePlayerIndex) {
+              allMatched = false;
+              break;
             }
           }
         }
@@ -442,27 +445,18 @@ const GameManager = () => {
       return;
     }
 
-    // Check if all active players have either:
-    // 1. Acted and matched the current bet (or gone all-in)
-    // 2. Are all-in and can't act further
+    // Check if all active players have either matched the current bet or are all-in
     let allActivePlayersActedOrAllIn = true;
 
     for (let i = 0; i < currentPlayers.length; i++) {
       const player = currentPlayers[i];
-      // Skip folded players
       if (player.folded) continue;
 
-      // Player needs to act if:
-      // 1. They haven't acted this round AND
-      // 2. They have chips to act with AND  
-      // 3. They haven't matched the current bet (or can't because they're all-in)
-      const hasActed = playersActedThisRound[i];
       const isAllIn = player.stack === 0;
       const hasMatchedBet = player.bet === currentBet;
-      const canAffordCurrentBet = (currentBet - player.bet) <= player.stack;
 
-      // A player needs to act if they haven't acted AND they have chips AND they can afford to match/call
-      if (!hasActed && !isAllIn && !hasMatchedBet && canAffordCurrentBet) {
+      // Any non-folded, non-all-in player who hasn't matched the current bet still needs to act
+      if (!isAllIn && !hasMatchedBet) {
         allActivePlayersActedOrAllIn = false;
         break;
       }
