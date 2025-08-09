@@ -45,38 +45,40 @@ const GameManager = () => {
 
   // Helper function to calculate side pots when players have different bet amounts
   const calculateSidePots = (playersList) => {
-    const activePlayers = playersList.filter(p => !p.folded && p.bet > 0);
-    
-    if (activePlayers.length <= 1) {
-      const totalPot = activePlayers.reduce((sum, p) => sum + p.bet, 0);
-      return [{ amount: totalPot, eligiblePlayers: activePlayers.map(p => p.name) }];
+    // Use totalCommitted across the whole hand for amounts; exclude folded players only from eligibility
+    const contributors = playersList
+      .map(p => ({ name: p.name, committed: p.totalCommitted || 0, folded: p.folded }))
+      .filter(p => p.committed > 0);
+
+    if (contributors.length === 0) {
+      return [];
     }
 
-    // Sort players by their bet amount (lowest to highest)
-    const sortedByBet = [...activePlayers].sort((a, b) => a.bet - b.bet);
+    // Sort players by their committed amount (lowest to highest)
+    const sortedByCommitted = [...contributors].sort((a, b) => a.committed - b.committed);
     const sidePotArray = [];
-    let previousBetLevel = 0;
+    let previousCommitLevel = 0;
 
-    // Create side pots for each bet level
-    for (let i = 0; i < sortedByBet.length; i++) {
-      const currentBetLevel = sortedByBet[i].bet;
+    // Create side pots for each commitment level
+    for (let i = 0; i < sortedByCommitted.length; i++) {
+      const currentCommitLevel = sortedByCommitted[i].committed;
       
-      if (currentBetLevel > previousBetLevel) {
-        const betDifference = currentBetLevel - previousBetLevel;
+      if (currentCommitLevel > previousCommitLevel) {
+        const commitDifference = currentCommitLevel - previousCommitLevel;
         // All players from this index onwards contributed to this pot level
-        const contributingPlayers = sortedByBet.slice(i);
-        const potAmount = betDifference * contributingPlayers.length;
+        const contributingPlayers = sortedByCommitted.slice(i);
+        const potAmount = commitDifference * contributingPlayers.length;
         
         if (potAmount > 0) {
           sidePotArray.push({
             amount: potAmount,
-            eligiblePlayers: contributingPlayers.map(p => p.name),
-            minBet: previousBetLevel + 1,
-            maxBet: currentBetLevel
+            eligiblePlayers: contributingPlayers.filter(p => !p.folded).map(p => p.name),
+            minCommit: previousCommitLevel + 1,
+            maxCommit: currentCommitLevel
           });
         }
         
-        previousBetLevel = currentBetLevel;
+        previousCommitLevel = currentCommitLevel;
       }
     }
 
@@ -88,10 +90,7 @@ const GameManager = () => {
     const calculatedSidePots = calculateSidePots(players);
     setSidePots(calculatedSidePots);
     
-    // Calculate total pot amount for display
-    const totalPotAmount = calculatedSidePots.reduce((sum, pot) => sum + pot.amount, 0);
-    setPot(totalPotAmount);
-    
+    // Do NOT overwrite the running pot here; pot is maintained cumulatively
     console.log("Side pots calculated:", calculatedSidePots);
     return calculatedSidePots;
   };
@@ -107,7 +106,8 @@ const GameManager = () => {
         stack: 1000, // Default starting chips
         bet: 0,
         folded: false,
-        hasTakenAction: false
+        hasTakenAction: false,
+        totalCommitted: 0
       }
     ]);
   };
@@ -144,7 +144,8 @@ const GameManager = () => {
       ...player,
       bet: 0,
       folded: false,
-      hasTakenAction: false
+      hasTakenAction: false,
+      totalCommitted: 0
     }));
 
     setPlayers(resetPlayers);
@@ -167,9 +168,11 @@ const GameManager = () => {
       const sbAmount = updatedPlayers[sbIndex].stack;
       updatedPlayers[sbIndex].bet = sbAmount;
       updatedPlayers[sbIndex].stack = 0;
+      updatedPlayers[sbIndex].totalCommitted = (updatedPlayers[sbIndex].totalCommitted || 0) + sbAmount;
     } else {
       updatedPlayers[sbIndex].stack -= smallBlind;
       updatedPlayers[sbIndex].bet = smallBlind;
+      updatedPlayers[sbIndex].totalCommitted = (updatedPlayers[sbIndex].totalCommitted || 0) + smallBlind;
     }
 
     // Check if big blind player can afford the blind
@@ -178,9 +181,11 @@ const GameManager = () => {
       const bbAmount = updatedPlayers[bbIndex].stack;
       updatedPlayers[bbIndex].bet = bbAmount;
       updatedPlayers[bbIndex].stack = 0;
+      updatedPlayers[bbIndex].totalCommitted = (updatedPlayers[bbIndex].totalCommitted || 0) + bbAmount;
     } else {
       updatedPlayers[bbIndex].stack -= bigBlind;
       updatedPlayers[bbIndex].bet = bigBlind;
+      updatedPlayers[bbIndex].totalCommitted = (updatedPlayers[bbIndex].totalCommitted || 0) + bigBlind;
     }
 
     setActivePlayerIndex((bbIndex + 1) % players.length);
@@ -231,6 +236,7 @@ const GameManager = () => {
           
           currentPlayer.stack = 0;
           currentPlayer.bet = newTotalBet;
+          currentPlayer.totalCommitted = (currentPlayer.totalCommitted || 0) + allInAmount;
           setPot(pot + allInAmount);
           
           console.log(`${currentPlayer.name} called with all-in: $${allInAmount} (total bet: $${newTotalBet})`);
@@ -238,6 +244,7 @@ const GameManager = () => {
           // Normal call - player has enough chips
           currentPlayer.stack -= callAmount;
           currentPlayer.bet = currentBet;
+          currentPlayer.totalCommitted = (currentPlayer.totalCommitted || 0) + callAmount;
           setPot(pot + callAmount);
         }
 
@@ -294,6 +301,7 @@ const GameManager = () => {
 
         currentPlayer.stack -= raiseDiff;
         currentPlayer.bet = raiseTotal;
+        currentPlayer.totalCommitted = (currentPlayer.totalCommitted || 0) + raiseDiff;
         
         // Update these values first
         const updatedPot = pot + raiseDiff;
@@ -381,6 +389,7 @@ const GameManager = () => {
         // Update player's stack and bet
         currentPlayer.stack = 0;
         currentPlayer.bet = allInAmount;
+        currentPlayer.totalCommitted = (currentPlayer.totalCommitted || 0) + allInDiff;
 
         // Update the pot
         setPot(pot + allInDiff);
@@ -416,28 +425,27 @@ const GameManager = () => {
           // For 3+ player games, use the normal flow
           setPlayersActedThisRound(allInPlayersActed);
           setPlayers(updatedPlayers);
-          moveToNextPlayer(updatedPlayers);
+          moveToNextPlayer(updatedPlayers, allInPlayersActed);
           return;
         } else {
           // This is like a call that happens to be all remaining chips
           updatedPlayersActed[activePlayerIndex] = true;
           setPlayersActedThisRound(updatedPlayersActed);
           setPlayers(updatedPlayers);
-          moveToNextPlayer(updatedPlayers);
+          moveToNextPlayer(updatedPlayers, updatedPlayersActed);
           return;
-        }
-        break;
-
-      default:
-        break;
+                }
+ 
+       default:
+         break;
     }
 
     setPlayersActedThisRound(updatedPlayersActed);
-    moveToNextPlayer(updatedPlayers);
+    moveToNextPlayer(updatedPlayers, updatedPlayersActed);
     setPlayers(updatedPlayers);
   };
 
-  const moveToNextPlayer = (currentPlayers) => {
+  const moveToNextPlayer = (currentPlayers, actedMapParam = playersActedThisRound) => {
     // First, check if only one player remains active
     const activePlayers = currentPlayers.filter(p => !p.folded);
     if (activePlayers.length === 1) {
@@ -493,7 +501,7 @@ const GameManager = () => {
       }
 
       // Skip players who have already acted AND matched the current bet
-      if (playersActedThisRound[nextIndex] && nextPlayer.bet === currentBet) {
+      if (actedMapParam[nextIndex] && nextPlayer.bet === currentBet) {
         nextIndex = (nextIndex + 1) % currentPlayers.length;
         loopCount++;
         continue;
@@ -514,7 +522,7 @@ const GameManager = () => {
     setActivePlayerIndex(nextIndex);
 
     console.log(`Next player: ${currentPlayers[nextIndex]?.name || 'Unknown'} (index: ${nextIndex})`);
-    console.log("Players acted status:", playersActedThisRound);
+    console.log("Players acted status:", actedMapParam);
     console.log("Current bet:", currentBet);
     console.log("Player bets:", currentPlayers.map(p => `${p.name}: $${p.bet} (stack: $${p.stack})`));
   };
@@ -638,9 +646,8 @@ const GameManager = () => {
       const updatedSidePots = sidePots.filter((_, index) => index !== specificPotIndex);
       setSidePots(updatedSidePots);
       
-      // Update total pot
-      const newTotalPot = updatedSidePots.reduce((sum, pot) => sum + pot.amount, 0);
-      setPot(newTotalPot);
+      // Decrease the total pot by the awarded amount (do not recompute from remaining side pots)
+      setPot(Math.max(0, pot - sidePot.amount));
 
       setPlayers(updatedPlayers);
 
@@ -673,7 +680,8 @@ const GameManager = () => {
       ...player,
       bet: 0,
       folded: false,
-      hasTakenAction: false
+      hasTakenAction: false,
+      totalCommitted: 0
     }));
 
     setPlayers(resetPlayers);
@@ -695,9 +703,11 @@ const GameManager = () => {
         const sbAmount = updatedPlayers[sbIndex].stack;
         updatedPlayers[sbIndex].bet = sbAmount;
         updatedPlayers[sbIndex].stack = 0;
+        updatedPlayers[sbIndex].totalCommitted = (updatedPlayers[sbIndex].totalCommitted || 0) + sbAmount;
       } else {
         updatedPlayers[sbIndex].stack -= smallBlind;
         updatedPlayers[sbIndex].bet = smallBlind;
+        updatedPlayers[sbIndex].totalCommitted = (updatedPlayers[sbIndex].totalCommitted || 0) + smallBlind;
       }
 
       // Check if big blind player can afford the blind
@@ -706,9 +716,11 @@ const GameManager = () => {
         const bbAmount = updatedPlayers[bbIndex].stack;
         updatedPlayers[bbIndex].bet = bbAmount;
         updatedPlayers[bbIndex].stack = 0;
+        updatedPlayers[bbIndex].totalCommitted = (updatedPlayers[bbIndex].totalCommitted || 0) + bbAmount;
       } else {
         updatedPlayers[bbIndex].stack -= bigBlind;
         updatedPlayers[bbIndex].bet = bigBlind;
+        updatedPlayers[bbIndex].totalCommitted = (updatedPlayers[bbIndex].totalCommitted || 0) + bigBlind;
       }
 
       setActivePlayerIndex((bbIndex + 1) % updatedPlayers.length);
@@ -733,7 +745,8 @@ const GameManager = () => {
       stack: 1000,
       bet: 0,
       folded: false,
-      hasTakenAction: false
+      hasTakenAction: false,
+      totalCommitted: 0
     }));
 
     setPlayers(resetPlayers);
@@ -754,7 +767,8 @@ const GameManager = () => {
       stack: player.stack,
       bet: 0,
       folded: false,
-      hasTakenAction: false
+      hasTakenAction: false,
+      totalCommitted: 0
     }));
 
     setPlayers(resetPlayers);

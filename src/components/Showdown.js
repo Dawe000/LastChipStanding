@@ -38,8 +38,8 @@ const Showdown = ({
               <div key={potIndex} className="side-pot">
                 <h5>
                   Side Pot {potIndex + 1}: ${sidePot.amount}
-                  {sidePot.minBet && sidePot.maxBet && 
-                    ` (Bet range: $${sidePot.minBet}-${sidePot.maxBet})`
+                  {sidePot.minCommit && sidePot.maxCommit && 
+                    ` (Commit range: $${sidePot.minCommit}-${sidePot.maxCommit})`
                   }
                 </h5>
                 <p>Eligible players: {sidePot.eligiblePlayers.join(', ')}</p>
